@@ -170,6 +170,48 @@
             font-weight: 500;
         }
 
+        .error-overlay {
+            position: absolute;
+            inset: 0;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            z-index: 1001;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .error-icon {
+            font-size: 48px;
+        }
+
+        .error-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #ef4444;
+        }
+
+        .error-message {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            max-width: 500px;
+            word-break: break-all;
+        }
+
+        .error-code {
+            background: var(--bg-secondary);
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.875rem;
+            border: 1px solid var(--border);
+            max-width: 100%;
+            overflow-x: auto;
+        }
+
         /* Zoom Controls */
         .zoom-controls {
             position: absolute;
@@ -381,118 +423,160 @@
             }
         });
 
-        // HERE Maps Configuration
-        const API_KEY = 'PN8o1L-bX1sMibfHIZqAHtFm8k7AnJm8nvbha-yzBGY';
-
-        // Initialize platform
-        const platform = new H.service.Platform({
-            apikey: API_KEY
-        });
-
-        // Get default map layers
-        const defaultLayers = platform.createDefaultLayers();
-
-        // Initial coordinates (São Paulo, Brazil)
-        const initialLat = -23.5505;
-        const initialLng = -46.6333;
-        const initialZoom = 12;
-
-        // Initialize map
-        const map = new H.Map(
-            document.getElementById('mapContainer'),
-            defaultLayers.vector.normal.map,
-            {
-                zoom: initialZoom,
-                center: { lat: initialLat, lng: initialLng },
-                pixelRatio: window.devicePixelRatio || 1
-            }
-        );
-
-        // Enable map interaction (pan, zoom, etc.)
-        const behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
-
-        // Add default UI components
-        const ui = H.ui.UI.createDefault(map, defaultLayers);
-
-        // Handle window resize
-        window.addEventListener('resize', () => map.getViewPort().resize());
-
-        // Layer references for switching
-        const mapLayers = {
-            normal: defaultLayers.vector.normal.map,
-            satellite: defaultLayers.raster.satellite.map,
-            terrain: defaultLayers.vector.normal.truck
-        };
-
-        // Update coordinates display
-        function updateCoordinates() {
-            const center = map.getCenter();
-            const zoom = map.getZoom();
-
-            document.getElementById('lat').textContent = center.lat.toFixed(4);
-            document.getElementById('lng').textContent = center.lng.toFixed(4);
-            document.getElementById('zoomLevel').textContent = Math.round(zoom);
-
-            updateScale();
-        }
-
-        // Calculate and update scale
-        function updateScale() {
-            const zoom = map.getZoom();
-            const center = map.getCenter();
-
-            // Approximate scale calculation
-            const metersPerPixel = 156543.03392 * Math.cos(center.lat * Math.PI / 180) / Math.pow(2, zoom);
-            const scaleWidth = 100; // pixels
-            let distance = metersPerPixel * scaleWidth;
-
-            let unit = 'm';
-            if (distance >= 1000) {
-                distance = distance / 1000;
-                unit = 'km';
-            }
-
-            document.getElementById('scaleIndicator').textContent =
-                `Escala: ${distance.toFixed(distance < 10 ? 1 : 0)} ${unit}`;
-        }
-
-        // Map event listeners
-        map.addEventListener('mapviewchange', updateCoordinates);
-        map.addEventListener('mapviewchangeend', updateCoordinates);
-
-        // Zoom controls
-        document.getElementById('zoomIn').addEventListener('click', () => {
-            map.setZoom(map.getZoom() + 1, true);
-        });
-
-        document.getElementById('zoomOut').addEventListener('click', () => {
-            map.setZoom(map.getZoom() - 1, true);
-        });
-
-        // Map type buttons
-        document.querySelectorAll('.map-type-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const type = btn.dataset.type;
-
-                // Update active state
-                document.querySelectorAll('.map-type-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-
-                // Change map layer
-                if (mapLayers[type]) {
-                    map.setBaseLayer(mapLayers[type]);
-                }
-            });
-        });
-
-        // Hide loading overlay when map is ready
-        map.addEventListener('mapviewchangeend', function hideLoading() {
+        // Show error function
+        function showError(title, message, code) {
+            const mapWrapper = document.querySelector('.map-wrapper');
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-overlay';
+            errorDiv.innerHTML = `
+                <div class="error-icon">⚠️</div>
+                <div class="error-title">${title}</div>
+                <div class="error-message">${message}</div>
+                ${code ? `<div class="error-code">${code}</div>` : ''}
+            `;
+            mapWrapper.appendChild(errorDiv);
             document.getElementById('loadingOverlay').classList.add('hidden');
-            map.removeEventListener('mapviewchangeend', hideLoading);
-        });
+        }
 
-        // Initial update
-        updateCoordinates();
+        // Check if HERE Maps API loaded
+        if (typeof H === 'undefined') {
+            showError(
+                'API não carregou',
+                'O HERE Maps JavaScript API não foi carregado. Verifique sua conexão ou se o domínio js.api.here.com está acessível.',
+                'H is undefined'
+            );
+        } else {
+            try {
+                // HERE Maps Configuration
+                const API_KEY = 'PN8o1L-bX1sMibfHIZqAHtFm8k7AnJm8nvbha-yzBGY';
+
+                // Initialize platform
+                const platform = new H.service.Platform({
+                    apikey: API_KEY
+                });
+
+                // Get default map layers
+                const defaultLayers = platform.createDefaultLayers();
+
+                // Initial coordinates (São Paulo, Brazil)
+                const initialLat = -23.5505;
+                const initialLng = -46.6333;
+                const initialZoom = 12;
+
+                // Initialize map
+                const map = new H.Map(
+                    document.getElementById('mapContainer'),
+                    defaultLayers.vector.normal.map,
+                    {
+                        zoom: initialZoom,
+                        center: { lat: initialLat, lng: initialLng },
+                        pixelRatio: window.devicePixelRatio || 1
+                    }
+                );
+
+                // Enable map interaction (pan, zoom, etc.)
+                const behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
+
+                // Add default UI components
+                const ui = H.ui.UI.createDefault(map, defaultLayers);
+
+                // Handle window resize
+                window.addEventListener('resize', () => map.getViewPort().resize());
+
+                // Layer references for switching
+                const mapLayers = {
+                    normal: defaultLayers.vector.normal.map,
+                    satellite: defaultLayers.raster.satellite.map,
+                    terrain: defaultLayers.vector.normal.truck
+                };
+
+                // Update coordinates display
+                function updateCoordinates() {
+                    const center = map.getCenter();
+                    const zoom = map.getZoom();
+
+                    document.getElementById('lat').textContent = center.lat.toFixed(4);
+                    document.getElementById('lng').textContent = center.lng.toFixed(4);
+                    document.getElementById('zoomLevel').textContent = Math.round(zoom);
+
+                    updateScale();
+                }
+
+                // Calculate and update scale
+                function updateScale() {
+                    const zoom = map.getZoom();
+                    const center = map.getCenter();
+
+                    // Approximate scale calculation
+                    const metersPerPixel = 156543.03392 * Math.cos(center.lat * Math.PI / 180) / Math.pow(2, zoom);
+                    const scaleWidth = 100; // pixels
+                    let distance = metersPerPixel * scaleWidth;
+
+                    let unit = 'm';
+                    if (distance >= 1000) {
+                        distance = distance / 1000;
+                        unit = 'km';
+                    }
+
+                    document.getElementById('scaleIndicator').textContent =
+                        `Escala: ${distance.toFixed(distance < 10 ? 1 : 0)} ${unit}`;
+                }
+
+                // Map event listeners
+                map.addEventListener('mapviewchange', updateCoordinates);
+                map.addEventListener('mapviewchangeend', updateCoordinates);
+
+                // Zoom controls
+                document.getElementById('zoomIn').addEventListener('click', () => {
+                    map.setZoom(map.getZoom() + 1, true);
+                });
+
+                document.getElementById('zoomOut').addEventListener('click', () => {
+                    map.setZoom(map.getZoom() - 1, true);
+                });
+
+                // Map type buttons
+                document.querySelectorAll('.map-type-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const type = btn.dataset.type;
+
+                        // Update active state
+                        document.querySelectorAll('.map-type-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+
+                        // Change map layer
+                        if (mapLayers[type]) {
+                            map.setBaseLayer(mapLayers[type]);
+                        }
+                    });
+                });
+
+                // Hide loading overlay when map is ready
+                let loadingTimeout = setTimeout(() => {
+                    showError(
+                        'Timeout',
+                        'O mapa demorou muito para carregar. Verifique se a API Key está correta e se o domínio está autorizado no HERE Developer.',
+                        'API_KEY: ' + API_KEY.substring(0, 10) + '...'
+                    );
+                }, 15000);
+
+                map.addEventListener('mapviewchangeend', function hideLoading() {
+                    clearTimeout(loadingTimeout);
+                    document.getElementById('loadingOverlay').classList.add('hidden');
+                    map.removeEventListener('mapviewchangeend', hideLoading);
+                });
+
+                // Initial update
+                updateCoordinates();
+
+            } catch (error) {
+                showError(
+                    'Erro ao inicializar',
+                    'Ocorreu um erro ao inicializar o mapa.',
+                    error.message || JSON.stringify(error)
+                );
+            }
+        }
     </script>
 </body>
 </html>
