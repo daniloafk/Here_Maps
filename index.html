@@ -24,16 +24,25 @@
 
         const layers = platform.createDefaultLayers();
 
+        // Usar mapa raster (mais leve) ao invés de vector
         const map = new H.Map(
             document.getElementById('map'),
-            layers.vector.normal.map,
+            layers.raster.normal.map,
             {
                 zoom: 15,
-                center: { lat: -23.5505, lng: -46.6333 }
+                center: { lat: -23.5505, lng: -46.6333 },
+                pixelRatio: window.devicePixelRatio || 1
             }
         );
 
-        new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
+        // Configurar comportamento do mapa com rotação
+        const mapEvents = new H.mapevents.MapEvents(map);
+        const behavior = new H.mapevents.Behavior(mapEvents);
+
+        // Habilitar rotação e inclinação
+        behavior.enable(H.mapevents.Behavior.Feature.HEADING);
+        behavior.enable(H.mapevents.Behavior.Feature.TILT);
+
         H.ui.UI.createDefault(map, layers);
 
         // Geolocalização
