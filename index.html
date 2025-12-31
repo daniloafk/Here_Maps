@@ -24,10 +24,10 @@
 
         const layers = platform.createDefaultLayers();
 
-        // Usar mapa raster (mais leve) ao invés de vector
+        // Usar mapa vector para que as letras girem com a rotação
         const map = new H.Map(
             document.getElementById('map'),
-            layers.raster.normal.map,
+            layers.vector.normal.map,
             {
                 zoom: 15,
                 center: { lat: -23.5505, lng: -46.6333 },
